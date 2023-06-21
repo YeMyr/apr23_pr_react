@@ -2,21 +2,11 @@ import React, { useState } from 'react';
 import './App.scss';
 import cn from 'classnames';
 
+import { getFullProducts } from './Helpers/getFullProducts';
+
 import usersFromServer from './api/users';
 import categoriesFromServer from './api/categories';
 import productsFromServer from './api/products';
-
-const fullProducts = productsFromServer.map((product) => {
-  const category = categoriesFromServer.find(
-    serverCategory => serverCategory.id === product.categoryId,
-  );
-
-  const user = usersFromServer.find(owner => owner.id === category.ownerId);
-
-  const fullProduct = { ...product, category, user };
-
-  return fullProduct;
-});
 
 const findProductsByUserId = (userId, products) => {
   if (userId === 'All') {
@@ -27,14 +17,19 @@ const findProductsByUserId = (userId, products) => {
 };
 
 export const App = () => {
-  const [products, setProducts] = useState(fullProducts);
-  // const [users, setUsers] = useState(usersFromServer);
   const users = usersFromServer;
+  const products = getFullProducts(
+    productsFromServer,
+    categoriesFromServer,
+    usersFromServer,
+  );
+
+  const [visibleProducts, setVisibleProducts] = useState(products);
   const [selectedUserId, setSelectedUserId] = useState('All');
 
-  const filterProducts = (event) => {
-    setSelectedUserId(event.target.id);
-    setProducts(current => findProductsByUserId(selectedUserId, current));
+  const filterProducts = (id, productsToFilter) => {
+    setSelectedUserId(id);
+    setVisibleProducts(findProductsByUserId(id, productsToFilter));
   };
 
   return (
@@ -48,8 +43,7 @@ export const App = () => {
 
             <p className="panel-tabs has-text-weight-bold">
               <a
-                id="All"
-                onClick={filterProducts}
+                onClick={() => filterProducts('All', products)}
                 className={cn({
                   'is-active': selectedUserId === 'All',
                 })}
@@ -61,8 +55,7 @@ export const App = () => {
 
               {users.map(user => (
                 <a
-                  id={user.id}
-                  onClick={filterProducts}
+                  onClick={() => filterProducts(user.id, products)}
                   key={user.id}
                   data-cy="FilterAllUsers"
                   href="#/"
@@ -215,7 +208,7 @@ export const App = () => {
             </thead>
 
             <tbody>
-              {products.map(product => (
+              {visibleProducts.map(product => (
                 <tr key={product.id} data-cy="Product">
                   <td
                     className="has-text-weight-bold"
